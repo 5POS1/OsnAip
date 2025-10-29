@@ -140,39 +140,7 @@ public class MainPanel extends javax.swing.JPanel {
             .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
     }// </editor-fold>//GEN-END:initComponents
-public static void getNetworkIPS() {
-        final byte[] ip;
-        try {
-            ip = InetAddress.getLocalHost().getAddress();
-        } catch (Exception e) {
-            return;
-        }
 
-        for (int i = 1; i <= 254; i++) {
-            final int j = i;
-
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        ip[3] = (byte) j;
-
-                        String host = "192.168.4" + "." + j;
-
-                        //InetAddress address = InetAddress.getByAddress(ip);
-                        //String output = address.toString().substring(1);
-                        if (InetAddress.getByName(host).isReachable(200)) {
-                            System.out.println(host + " is on the network");
-                        } else {
-                            System.out.println("Not Reachable: " + host);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
-        }
-    }
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         int countcomp = dlm.getSize();
         createComp(countcomp);
@@ -180,13 +148,42 @@ public static void getNetworkIPS() {
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
- int start = Integer.valueOf(jSpinner1.getValue().toString());
- int end = Integer.valueOf(jSpinner2.getValue().toString());
-        try {
-            checkHost("192.168.4",start,end);
-        } catch (IOException ex) {
-            Logger.getLogger(MainPanel.class.getName()).log(Level.SEVERE, null, ex);
-        }
+int start = Integer.valueOf(jSpinner1.getValue().toString());
+    int end = Integer.valueOf(jSpinner2.getValue().toString());
+    String subnet = "192.168.4"; // или можно получить из jTextField1
+    
+    // Очищаем список перед сканированием
+    dlm.clear();
+    
+    // Многопоточное сканирование
+    for (int i = start; i <= end; i++) {
+        final int currentIp = i;
+        
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String host = subnet + "." + currentIp;
+                    int timeout = 200; // можно получить из jSpinner3
+                    
+                    if (InetAddress.getByName(host).isReachable(timeout)) {
+                        // Добавляем в список в потоке диспетчера событий
+                        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                            public void run() {
+                                dlm.addElement(host);
+                            }
+                        });
+                        System.out.println(host + " is on the network");
+                    } else {
+                        System.out.println("Not Reachable: " + host);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
+              
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jTextField1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField1ActionPerformed
