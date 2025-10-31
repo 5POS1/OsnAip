@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package ui;
 
 import static com.sun.javafx.css.SizeUnits.PC;
@@ -12,21 +7,26 @@ import java.awt.PopupMenu;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
 import javax.swing.JPanel;
+import javax.swing.SwingWorker;
 
 /**
  *
  * @author Student
  */
 public class MainPanel extends javax.swing.JPanel {
+
     private PC pc;
     private JPanel[] panels;
     DefaultListModel dlm; // модель списка
+    StatusBar statusBar;
 
-    public MainPanel() {
+    public MainPanel(StatusBar statusBar) {
         initComponents();
         dlm = new DefaultListModel();
         dlm.clear();
@@ -37,6 +37,7 @@ public class MainPanel extends javax.swing.JPanel {
         dlm.add(3, "Comp3");
         dlm.add(4, "Comp2");
         dlm.add(5, "Comp1");
+        this.statusBar = statusBar;
 
     }
 
@@ -95,22 +96,21 @@ public class MainPanel extends javax.swing.JPanel {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                            .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGap(18, 18, 18)
-                            .addComponent(jSpinner2, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addComponent(jTextField1)
-                        .addComponent(jScrollPane1)
-                        .addGroup(layout.createSequentialGroup()
-                            .addGap(41, 41, 41)
-                            .addComponent(jLabel1))
-                        .addGroup(layout.createSequentialGroup()
-                            .addGap(36, 36, 36)
-                            .addComponent(jLabel2))
-                        .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jSpinner2, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jTextField1, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                        .addGap(41, 41, 41)
+                        .addComponent(jLabel1))
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                        .addGap(36, 36, 36)
+                        .addComponent(jLabel2))
+                    .addComponent(jButton2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jButton1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jSpinner3, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 730, Short.MAX_VALUE))
@@ -148,42 +148,80 @@ public class MainPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-int start = Integer.valueOf(jSpinner1.getValue().toString());
-    int end = Integer.valueOf(jSpinner2.getValue().toString());
-    String subnet = "192.168.4"; // или можно получить из jTextField1
-    
-    // Очищаем список перед сканированием
-    dlm.clear();
-    
-    // Многопоточное сканирование
-    for (int i = start; i <= end; i++) {
-        final int currentIp = i;
-        
-        new Thread(new Runnable() {
+        int start = Integer.valueOf(jSpinner1.getValue().toString());
+        int end = Integer.valueOf(jSpinner2.getValue().toString());
+        String subnet = jTextField1.getText().trim();
+
+        // Получаем количество секций из jSpinner2
+        int totalSections = Integer.valueOf(jSpinner2.getValue().toString());
+
+        // Очищаем список и сбрасываем прогресс-бар
+        dlm.clear();
+        statusBar.setStatusPG(0);
+
+        final int totalHosts = end - start + 1;
+        final java.util.concurrent.atomic.AtomicInteger completedHosts = new java.util.concurrent.atomic.AtomicInteger(0);
+
+        // Создаем SwingWorker для отслеживания прогресса
+        SwingWorker<Void, Integer> progressWorker = new SwingWorker<Void, Integer>() {
             @Override
-            public void run() {
-                try {
-                    String host = subnet + "." + currentIp;
-                    int timeout = 200; // можно получить из jSpinner3
-                    
-                    if (InetAddress.getByName(host).isReachable(timeout)) {
-                        // Добавляем в список в потоке диспетчера событий
-                        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-                            public void run() {
-                                dlm.addElement(host);
-                            }
-                        });
-                        System.out.println(host + " is on the network");
-                    } else {
-                        System.out.println("Not Reachable: " + host);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+            protected Void doInBackground() throws Exception {
+                while (completedHosts.get() < totalHosts) {
+                    // Каждый хост = одна секция
+                    int progress = (completedHosts.get() * totalSections / totalHosts) * (100 / totalSections);
+                    publish(Math.min(progress, 100));
+                    Thread.sleep(50);
                 }
+                publish(100);
+                return null;
             }
-        }).start();
-    }
-              
+
+            @Override
+            protected void process(List<Integer> chunks) {
+                int progress = chunks.get(chunks.size() - 1);
+                statusBar.setStatusPG(progress);
+            }
+
+            @Override
+            protected void done() {
+                statusBar.setStatusPG(100);
+            }
+        };
+
+        // Запускаем отслеживание прогресса
+        progressWorker.execute();
+
+        // Многопоточное сканирование (остается без изменений)
+        for (int i = start; i <= end; i++) {
+            final int currentIp = i;
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String host = subnet + "." + currentIp;
+                        int timeout = 200;
+
+                        if (InetAddress.getByName(host).isReachable(timeout)) {
+                            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                                public void run() {
+                                    dlm.addElement(host);
+                                }
+                            });
+                           // System.out.println(host + " is on the network");
+                        } else {
+                            //System.out.println("Not Reachable: " + host);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    } finally {
+                        completedHosts.incrementAndGet();
+                    }
+                }
+            }).start();
+        }
+
+
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jTextField1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField1ActionPerformed
@@ -198,8 +236,8 @@ int start = Integer.valueOf(jSpinner1.getValue().toString());
             dot.add(pc);
             panels[i] = dot;
         }
-        
-        JPanel mainPanel=new JPanel();
+
+        JPanel mainPanel = new JPanel();
         //mainPanel.setBackground(Color.yellow);
         mainPanel.setLayout(new GridLayout(3, 3, 5, 5)); // 2 последних значения -- отступы
 
@@ -209,27 +247,28 @@ int start = Integer.valueOf(jSpinner1.getValue().toString());
         jPanel1.setLayout(new BorderLayout());
         jPanel1.add(mainPanel, BorderLayout.CENTER);
         jPanel1.revalidate();
-        
+
     }
-    private void checkHost(String subnet,int start,int end) throws IOException{
+
+    private void checkHost(String subnet, int start, int end) throws IOException {
         dlm.clear();
-       int timeout = 100;
-       int j=0;
+        int timeout = 100;
+        int j = 0;
         for (int i = start; i < end; i++) {
-           try {
-               String host = subnet+"."+i;
-               if (InetAddress.getByName(host).isReachable(timeout)){
-                   dlm.add(j, host);
-                   j++;
-               }else{
-                   System.out.println("host unreacheble");
-               }
-           } catch (UnknownHostException ex) {
-               Logger.getLogger(MainPanel.class.getName()).log(Level.SEVERE, null, ex);
-           } catch (IOException ex) {
-               Logger.getLogger(MainPanel.class.getName()).log(Level.SEVERE, null, ex);
-           }
-           
+            try {
+                String host = subnet + "." + i;
+                if (InetAddress.getByName(host).isReachable(timeout)) {
+                    dlm.add(j, host);
+                    j++;
+                } else {
+                    System.out.println("host unreacheble");
+                }
+            } catch (UnknownHostException ex) {
+                Logger.getLogger(MainPanel.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException ex) {
+                Logger.getLogger(MainPanel.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
         }
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
